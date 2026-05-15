@@ -220,7 +220,6 @@ Common setups:
 
 Near-term documentation and workflow work:
 
-* Better validation output, including JSON output for CI.
 * A documented TMS adapter workflow once a provider and current API are chosen.
 * XLIFF package input support after the JSON schema is stable.
 * Internal dogfooding for Mix task output using simple interpolation.
@@ -228,5 +227,8 @@ Near-term documentation and workflow work:
 Later architecture work:
 
 * Backend delegation for projects with distinct translation policies.
+* First-class list values for rendering dynamic lists of translated message
+  fragments, with CLDR list formatting when available and simple joining
+  otherwise.
 * Plug helper polish around request language selection.
 * More provider validation hooks for duplicate keys and malformed resources.
