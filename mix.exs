@@ -5,7 +5,7 @@ defmodule Translatable.MixProject do
     [
       app: :translatable,
       version: "0.1.0",
-      elixir: "~> 1.15",
+      elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       package: package(),
@@ -56,7 +56,7 @@ defmodule Translatable.MixProject do
   defp package do
     [
       licenses: ["MIT"],
-      links: %{}
+      links: %{"GitHub" => "https://github.com/TroyLaurin/translatable"}
     ]
   end
 

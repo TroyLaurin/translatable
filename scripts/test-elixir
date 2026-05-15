@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+set -eu
+
+IMAGE_TAG="${1:-1.14.5-erlang-25.3.2.8-debian-bullseye-20230612-slim}"
+PROJECT_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+
+docker run --rm -t \
+  --user "$(id -u):$(id -g)" \
+  -e HOME=/tmp/translatable-home \
+  -e MIX_HOME=/tmp/translatable-mix \
+  -e HEX_HOME=/tmp/translatable-hex \
+  -v "$PROJECT_ROOT:/workspace" \
+  -w /workspace \
+  "hexpm/elixir:${IMAGE_TAG}" \
+  sh -lc "mix local.hex --force && mix local.rebar --force && mix deps.get && mix precommit"
