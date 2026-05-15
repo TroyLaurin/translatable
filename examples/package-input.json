@@ -1,0 +1,39 @@
+{
+  "format": "translatable.translations.v1",
+  "messages": [
+    {
+      "key": "my_app:MyAppWeb.LoginMessages.greeting",
+      "application": "my_app",
+      "module": "MyAppWeb.LoginMessages",
+      "name": "greeting",
+      "source_lang": "en",
+      "source": "Welcome, {name}",
+      "source_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+      "params_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+      "definition_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000003",
+      "translatable": true,
+      "translator_note": "Shown after the user has successfully signed in.",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "note": "The display name chosen by the user"
+        }
+      ],
+      "translations": [
+        {
+          "lang": "es",
+          "text": "Bienvenido, {name}"
+        },
+        {
+          "lang": "de",
+          "text": "Willkommen, {name}"
+        }
+      ],
+      "location": {
+        "file": "lib/my_app_web/login_messages.ex",
+        "line": 8
+      }
+    }
+  ]
+}

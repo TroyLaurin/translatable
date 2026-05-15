@@ -213,6 +213,63 @@ defmodule Translatable.PackageTest do
              Translatable.Package.read_translations_input({:stdin, body})
   end
 
+  test "read_translations_input accepts the documented example" do
+    path = Path.expand("../../examples/package-input.json", __DIR__)
+
+    assert {:ok, %{"messages" => [_message]}} =
+             Translatable.Package.read_translations_input(path)
+  end
+
+  test "read_translations_input rejects malformed package input" do
+    input = %{
+      "format" => "translatable.translations.v1",
+      "messages" => [
+        %{
+          "key" => "demo:Messages.hello",
+          "source_hash" => "not-a-hash",
+          "params_hash" =>
+            "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+          "definition_hash" =>
+            "sha256:0000000000000000000000000000000000000000000000000000000000000003",
+          "translations" => [
+            %{"lang" => "es", "text" => "Hola"},
+            %{"lang" => "es", "text" => "Buenas"}
+          ]
+        },
+        %{
+          "key" => "demo:Messages.hello",
+          "source_hash" =>
+            "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+          "params_hash" =>
+            "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+          "definition_hash" =>
+            "sha256:0000000000000000000000000000000000000000000000000000000000000003",
+          "translations" => [%{"lang" => "de"}]
+        }
+      ]
+    }
+
+    assert {:error, errors} =
+             input
+             |> Jason.encode!()
+             |> then(&Translatable.Package.read_translations_input({:stdin, &1}))
+
+    assert Enum.any?(errors, &(&1 =~ "/messages/0/source_hash"))
+    assert Enum.any?(errors, &(&1 =~ "duplicate translation lang \"es\""))
+    assert Enum.any?(errors, &(&1 =~ "/messages/1/translations/0/text is required"))
+    assert Enum.any?(errors, &(&1 =~ "duplicate message key \"demo:Messages.hello\""))
+  end
+
+  test "read_translations_input reports schema errors for files directly" do
+    dir = Path.join(System.tmp_dir!(), "translatable-package-schema-test")
+    path = Path.join(dir, "translations.json")
+
+    write_json!(path, %{"format" => "translatable.translations.v1", "messages" => [%{}]})
+
+    assert {:error, errors} = Translatable.Package.read_translations_input(path)
+    assert Enum.any?(errors, &(&1 == "/messages/0/key is required"))
+  end
+
   defp translations_bundle do
     source_message = source_message(:hello)
 

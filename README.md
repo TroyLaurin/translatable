@@ -10,6 +10,10 @@ as early, pre-release software.
 See [docs/translatable.md](docs/translatable.md) for the current design notes
 and workflow documentation.
 
+The package input contract is documented in
+[docs/package-input.md](docs/package-input.md), with a JSON Schema at
+[docs/schemas/package-input.schema.json](docs/schemas/package-input.schema.json).
+
 ## Compatibility
 
 Translatable targets Elixir 1.15 and later.
@@ -22,5 +26,5 @@ scripts/test-elixir
 scripts/test-elixir-matrix
 ```
 
-`scripts/test-elixir` accepts a `hexpm/elixir` image tag when checking a
+`scripts/test-elixir` accepts an Elixir Docker image name when checking a
 specific runtime.

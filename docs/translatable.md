@@ -128,6 +128,10 @@ Packaging reads one or more translation input files, checks hashes, and writes:
 If the same message key appears in multiple translation inputs with different
 content, packaging fails rather than choosing an arbitrary winner.
 
+The package input contract is documented in
+[`docs/package-input.md`](package-input.md), with a JSON Schema at
+[`docs/schemas/package-input.schema.json`](schemas/package-input.schema.json).
+
 ### Validate
 
 Run validation in CI and before commits:
@@ -216,8 +220,6 @@ Common setups:
 
 Near-term documentation and workflow work:
 
-* Formal JSON schema for `translatable.translations.v1`.
-* Example translation input files.
 * Better validation output, including JSON output for CI.
 * A documented TMS adapter workflow once a provider and current API are chosen.
 * XLIFF package input support after the JSON schema is stable.

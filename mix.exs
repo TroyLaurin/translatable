@@ -65,7 +65,8 @@ defmodule Translatable.MixProject do
       main: "readme",
       extras: [
         "README.md",
-        "docs/translatable.md"
+        "docs/translatable.md",
+        "docs/package-input.md"
       ],
       groups_for_modules: [
         Runtime: [

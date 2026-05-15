@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TroyLaurin/translatable/blob/main/docs/schemas/package-input.schema.json",
+  "title": "Translatable Package Input",
+  "description": "Canonical translated JSON input consumed by mix translatable.package.",
+  "type": "object",
+  "required": ["format", "messages"],
+  "properties": {
+    "format": {
+      "const": "translatable.translations.v1"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/message"
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "message": {
+      "type": "object",
+      "required": [
+        "key",
+        "source_hash",
+        "params_hash",
+        "definition_hash",
+        "translations"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "application": {
+          "type": "string"
+        },
+        "module": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "source_lang": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string"
+        },
+        "source_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "params_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "definition_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "translatable": {
+          "type": "boolean"
+        },
+        "translator_note": {
+          "type": ["string", "null"]
+        },
+        "params": {
+          "type": "array"
+        },
+        "translations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/translation"
+          }
+        },
+        "location": {
+          "type": ["object", "null"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "translation": {
+      "type": "object",
+      "required": ["lang", "text"],
+      "properties": {
+        "lang": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

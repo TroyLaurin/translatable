@@ -274,6 +274,7 @@ defmodule Translatable.ValidateTest do
           "key" => hello["key"],
           "source_hash" => hello["source_hash"],
           "params_hash" => hello["params_hash"],
+          "definition_hash" => hello["definition_hash"],
           "translations" => [%{"lang" => "es", "text" => "Hola {name}"}]
         }
       ]

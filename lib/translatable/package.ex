@@ -169,10 +169,10 @@ defmodule Translatable.Package do
   end
 
   def read_translations_input(path) when is_binary(path) do
-    with {:ok, body} <- File.read(path),
-         {:ok, decoded} <- decode_translations(body, path) do
-      {:ok, decoded}
-    else
+    case File.read(path) do
+      {:ok, body} ->
+        decode_translations(body, path)
+
       {:error, :enoent} ->
         {:error, ["Translation input file not found: #{path}"]}
 
@@ -189,17 +189,122 @@ defmodule Translatable.Package do
       {:error, %Jason.DecodeError{} = reason} ->
         {:error, ["Invalid JSON in #{label}: #{Exception.message(reason)}"]}
 
+      {:error, reasons} when is_list(reasons) ->
+        {:error, reasons}
+
       {:error, reason} when is_binary(reason) ->
         {:error, [reason]}
     end
   end
 
   defp validate_translation_format(%{"format" => @translations_format, "messages" => messages})
-       when is_list(messages),
-       do: :ok
+       when is_list(messages) do
+    errors =
+      messages
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {message, index} -> validate_translation_message(message, index) end)
+      |> Kernel.++(duplicate_message_key_errors(messages))
 
-  defp validate_translation_format(_decoded) do
-    {:error, "Translation input must use #{@translations_format} with a messages list"}
+    if errors == [], do: :ok, else: {:error, errors}
+  end
+
+  defp validate_translation_format(_decoded),
+    do: {:error, ["Translation input must use #{@translations_format} with a messages list"]}
+
+  defp validate_translation_message(message, index) when is_map(message) do
+    path = "/messages/#{index}"
+
+    []
+    |> require_binary(message, "key", path)
+    |> require_hash(message, "source_hash", path)
+    |> require_hash(message, "params_hash", path)
+    |> require_hash(message, "definition_hash", path)
+    |> validate_translations(message, path)
+  end
+
+  defp validate_translation_message(_message, index) do
+    ["/messages/#{index} must be an object"]
+  end
+
+  defp require_binary(errors, message, field, path) do
+    case Map.fetch(message, field) do
+      {:ok, value} when is_binary(value) and value != "" -> errors
+      {:ok, _value} -> ["#{path}/#{field} must be a non-empty string" | errors]
+      :error -> ["#{path}/#{field} is required" | errors]
+    end
+  end
+
+  defp require_hash(errors, message, field, path) do
+    case Map.fetch(message, field) do
+      {:ok, "sha256:" <> hex = value} when byte_size(hex) == 64 ->
+        if String.match?(value, ~r/^sha256:[0-9a-f]{64}$/),
+          do: errors,
+          else: invalid_hash(errors, field, path)
+
+      {:ok, _value} ->
+        invalid_hash(errors, field, path)
+
+      :error ->
+        ["#{path}/#{field} is required" | errors]
+    end
+  end
+
+  defp invalid_hash(errors, field, path),
+    do: [
+      "#{path}/#{field} must be a lowercase sha256 hash such as sha256:<64 hex chars>" | errors
+    ]
+
+  defp validate_translations(errors, message, path) do
+    case Map.fetch(message, "translations") do
+      {:ok, translations} when is_list(translations) ->
+        translation_errors =
+          translations
+          |> Enum.with_index()
+          |> Enum.flat_map(fn {translation, index} ->
+            validate_translation(translation, "#{path}/translations/#{index}")
+          end)
+
+        duplicate_errors = duplicate_translation_lang_errors(translations, path)
+        translation_errors ++ duplicate_errors ++ errors
+
+      {:ok, _translations} ->
+        ["#{path}/translations must be a list" | errors]
+
+      :error ->
+        ["#{path}/translations is required" | errors]
+    end
+  end
+
+  defp validate_translation(translation, path) when is_map(translation) do
+    []
+    |> require_binary(translation, "lang", path)
+    |> require_binary(translation, "text", path)
+  end
+
+  defp validate_translation(_translation, path), do: ["#{path} must be an object"]
+
+  defp duplicate_message_key_errors(messages) do
+    messages
+    |> Enum.filter(&is_map/1)
+    |> Enum.map(& &1["key"])
+    |> duplicate_value_errors("message key", "/messages")
+  end
+
+  defp duplicate_translation_lang_errors(translations, path) do
+    translations
+    |> Enum.filter(&is_map/1)
+    |> Enum.map(& &1["lang"])
+    |> duplicate_value_errors("translation lang", "#{path}/translations")
+  end
+
+  defp duplicate_value_errors(values, label, path) do
+    values
+    |> Enum.filter(&is_binary/1)
+    |> Enum.frequencies()
+    |> Enum.flat_map(fn
+      {value, count} when count > 1 -> ["#{path} contains duplicate #{label} #{inspect(value)}"]
+      {_value, _count} -> []
+    end)
   end
 
   defp index_translations(%{"messages" => messages}) do
@@ -308,7 +413,8 @@ defmodule Translatable.Package do
   defp fingerprint_errors(current, translated) do
     [
       fingerprint_error(current, translated, "source_hash"),
-      fingerprint_error(current, translated, "params_hash")
+      fingerprint_error(current, translated, "params_hash"),
+      fingerprint_error(current, translated, "definition_hash")
     ]
     |> Enum.reject(&is_nil/1)
   end
