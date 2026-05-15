@@ -19,13 +19,13 @@ jobs:
       matrix:
         include:
           - elixir: "1.15.8"
-            otp: "26.2"
+            otp: "26.2.5"
           - elixir: "1.16.3"
-            otp: "26.2"
+            otp: "26.2.5"
           - elixir: "1.17.3"
-            otp: "27.1"
+            otp: "27.1.2"
           - elixir: "1.18.4"
-            otp: "27.3"
+            otp: "27.3.4"
 
     steps:
       - uses: actions/checkout@v6
@@ -35,6 +35,7 @@ jobs:
         with:
           elixir-version: ${{ matrix.elixir }}
           otp-version: ${{ matrix.otp }}
+          version-type: strict
 
       - name: Restore dependency cache
         uses: actions/cache@v5

@@ -1,5 +1,5 @@
 defmodule Translatable.ExtractTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   defmodule Messages do
     use Translatable

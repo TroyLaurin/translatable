@@ -549,118 +549,95 @@ defmodule Translatable do
   end
 
   defp referenced_param_names(text) do
-    cond do
-      cldr_parser_available?() ->
-        referenced_param_names_with_cldr(text)
-
-      Code.ensure_loaded?(Cldr.Message) and function_exported?(Cldr.Message, :bindings, 1) ->
-        referenced_param_names_with_cldr_bindings(text)
-
-      true ->
-        referenced_param_names_with_regex(text)
-    end
-  end
-
-  defp cldr_parser_available? do
-    (Code.ensure_loaded?(Cldr.Message.V1.Parser) and
-       function_exported?(Cldr.Message.V1.Parser, :parse, 1)) or
-      (Code.ensure_loaded?(Cldr.Message.Parser) and
-         function_exported?(Cldr.Message.Parser, :parse, 1))
-  end
-
-  defp referenced_param_names_with_cldr(text) do
-    case parse_cldr_message(text) do
-      {:ok, parsed} ->
-        parsed
-        |> collect_cldr_param_names()
-        |> Enum.map(&to_string/1)
-        |> Enum.uniq()
-
-      {:error, _reason} ->
-        []
-    end
-  rescue
-    _exception -> []
-  end
-
-  defp parse_cldr_message(text) do
-    parser =
-      cond do
-        cldr_v2_message?(text) and Code.ensure_loaded?(Cldr.Message.V2.Parser) ->
-          Cldr.Message.V2.Parser
-
-        Code.ensure_loaded?(Cldr.Message.V1.Parser) ->
-          Cldr.Message.V1.Parser
-
-        Code.ensure_loaded?(Cldr.Message.Parser) ->
-          Cldr.Message.Parser
-      end
-
-    apply(parser, :parse, [text])
-  end
-
-  defp cldr_v2_message?(text) do
-    Code.ensure_loaded?(Cldr.Message) and function_exported?(Cldr.Message, :detect_version, 1) and
-      apply(Cldr.Message, :detect_version, [text]) == :v2
-  end
-
-  defp collect_cldr_param_names(message) when is_list(message) do
-    Enum.flat_map(message, &collect_cldr_param_names/1)
-  end
-
-  defp collect_cldr_param_names(message) when is_map(message) do
-    message
-    |> Map.values()
-    |> collect_cldr_param_names()
-  end
-
-  defp collect_cldr_param_names({:named_arg, arg}), do: [arg]
-  defp collect_cldr_param_names({:pos_arg, arg}), do: [arg]
-  defp collect_cldr_param_names({:variable, arg}), do: [arg]
-  defp collect_cldr_param_names({:simple_format, arg, _format}), do: collect_cldr_param_names(arg)
-
-  defp collect_cldr_param_names({:simple_format, arg, _format, _style}),
-    do: collect_cldr_param_names(arg)
-
-  defp collect_cldr_param_names({:select, arg, selectors}),
-    do: collect_cldr_param_names([arg, selectors])
-
-  defp collect_cldr_param_names({:plural, arg, _offset, selectors}),
-    do: collect_cldr_param_names([arg, selectors])
-
-  defp collect_cldr_param_names({:select_ordinal, arg, _offset, selectors}) do
-    collect_cldr_param_names([arg, selectors])
-  end
-
-  defp collect_cldr_param_names(message) when is_tuple(message) do
-    message
-    |> Tuple.to_list()
-    |> collect_cldr_param_names()
-  end
-
-  defp collect_cldr_param_names(_message), do: []
-
-  defp referenced_param_names_with_cldr_bindings(text) do
-    case apply(Cldr.Message, :bindings, [text]) do
-      bindings when is_list(bindings) ->
-        bindings
-        |> List.flatten()
-        |> Enum.map(&to_string/1)
-        |> Enum.uniq()
-
-      {:error, _reason} ->
-        []
-    end
-  rescue
-    _exception -> []
-  end
-
-  defp referenced_param_names_with_regex(text) do
-    ~r/{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:[,}])/
-    |> Regex.scan(text, capture: :all_but_first)
-    |> List.flatten()
+    text
+    |> String.to_charlist()
+    |> scan_icu_message([])
+    |> Enum.reverse()
     |> Enum.uniq()
+    |> Enum.map(&to_string/1)
   end
+
+  defp scan_icu_message([], names), do: names
+
+  defp scan_icu_message([?{ | rest], names) do
+    {rest, names} = scan_icu_placeholder(rest, names)
+    scan_icu_message(rest, names)
+  end
+
+  defp scan_icu_message([_char | rest], names), do: scan_icu_message(rest, names)
+
+  defp scan_icu_placeholder(chars, names) do
+    chars = skip_icu_whitespace(chars)
+    {name, chars} = take_icu_identifier(chars, [])
+    chars = skip_icu_whitespace(chars)
+
+    case {name, chars} do
+      {[], chars} ->
+        skip_icu_placeholder(chars, 1)
+
+      {name, [?} | rest]} ->
+        {rest, [name | names]}
+
+      {name, [?, | rest]} ->
+        {body, rest} = take_icu_placeholder_body(rest, 1, [])
+        names = scan_icu_format_body(body, [name | names])
+        {rest, names}
+
+      {_name, chars} ->
+        skip_icu_placeholder(chars, 1)
+    end
+  end
+
+  defp scan_icu_format_body([], names), do: names
+
+  defp scan_icu_format_body([?{ | rest], names) do
+    {message, rest} = take_icu_placeholder_body(rest, 1, [])
+    names = scan_icu_message(message, names)
+    scan_icu_format_body(rest, names)
+  end
+
+  defp scan_icu_format_body([_char | rest], names), do: scan_icu_format_body(rest, names)
+
+  defp take_icu_identifier([char | rest], chars)
+       when char in ?a..?z or char in ?A..?Z or char == ?_ do
+    take_icu_identifier_tail(rest, [char | chars])
+  end
+
+  defp take_icu_identifier(chars, _acc), do: {[], chars}
+
+  defp take_icu_identifier_tail([char | rest], chars)
+       when char in ?a..?z or char in ?A..?Z or char in ?0..?9 or char == ?_ do
+    take_icu_identifier_tail(rest, [char | chars])
+  end
+
+  defp take_icu_identifier_tail(chars, acc), do: {Enum.reverse(acc), chars}
+
+  defp take_icu_placeholder_body([], _depth, acc), do: {Enum.reverse(acc), []}
+  defp take_icu_placeholder_body([?} | rest], 1, acc), do: {Enum.reverse(acc), rest}
+
+  defp take_icu_placeholder_body([?} | rest], depth, acc) do
+    take_icu_placeholder_body(rest, depth - 1, [?} | acc])
+  end
+
+  defp take_icu_placeholder_body([?{ | rest], depth, acc) do
+    take_icu_placeholder_body(rest, depth + 1, [?{ | acc])
+  end
+
+  defp take_icu_placeholder_body([char | rest], depth, acc) do
+    take_icu_placeholder_body(rest, depth, [char | acc])
+  end
+
+  defp skip_icu_placeholder([], _depth), do: {[], []}
+  defp skip_icu_placeholder([?} | rest], 1), do: {rest, []}
+  defp skip_icu_placeholder([?} | rest], depth), do: skip_icu_placeholder(rest, depth - 1)
+  defp skip_icu_placeholder([?{ | rest], depth), do: skip_icu_placeholder(rest, depth + 1)
+  defp skip_icu_placeholder([_char | rest], depth), do: skip_icu_placeholder(rest, depth)
+
+  defp skip_icu_whitespace([char | rest]) when char in [?\s, ?\n, ?\r, ?\t] do
+    skip_icu_whitespace(rest)
+  end
+
+  defp skip_icu_whitespace(chars), do: chars
 
   defp decompose_call!({name, _meta, args}) when is_atom(name) and is_list(args), do: {name, args}
   defp decompose_call!(name) when is_atom(name), do: {name, []}

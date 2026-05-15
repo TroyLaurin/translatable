@@ -1,5 +1,5 @@
 defmodule Translatable.RuntimeTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Translatable.Definition
   alias Translatable.Message
