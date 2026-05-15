@@ -1,0 +1,21 @@
+version: 2
+updates:
+  - package-ecosystem: "mix"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      cldr:
+        patterns:
+          - "ex_cldr*"
+          - "cldr_*"
+      docs:
+        patterns:
+          - "ex_doc"
+          - "earmark_parser"
+          - "makeup*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
